@@ -12,19 +12,19 @@ with open(PATH, "rb") as images:
 	assert images.read(4) == b'\x00\x00\x08\x03'
 	ImgCount = int.from_bytes(images.read(4), "big")
 	ImgRows = int.from_bytes(images.read(4), "big")
-	ImgColumbs = int.from_bytes(images.read(4), "big")
-	ImgSize = ImgRows * ImgColumbs
+	ImgColumns = int.from_bytes(images.read(4), "big")
+	ImgSize = ImgRows * ImgColumns
 	
 	images.seek(16 + ImgSize * INDEX)
 	
-	ImageData = np.zeros((ImgColumbs, ImgRows, 3), dtype=np.uint8)
-	for x in range(0, ImgColumbs):
+	ImageData = np.zeros((ImgColumns, ImgRows, 3), dtype=np.uint8)
+	for x in range(0, ImgColumns):
 		for y in range(0, ImgRows):
 			pixel = 255 - int.from_bytes(images.read(1), "big")
 			ImageData[x,y] = [pixel,pixel,pixel]
 			
 	
 
-Image.fromarray(ImageData).save("image" + str(INDEX) +".png" )
+Image.fromarray(ImageData).save("image" + str(INDEX) +".png")
 	
 	
