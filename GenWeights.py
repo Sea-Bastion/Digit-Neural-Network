@@ -11,8 +11,9 @@ import Methods
 IMGPATH = "Training Data/train-images-idx3-ubyte"
 LBLPATH = "Training Data/train-labels-idx1-ubyte"
 
-learnRate = 0.01
-BatchSize = 1
+learnRate = 0.0001
+BatchSize = 100
+TrainingLoops = 500
 
 
 #------------------------------------------------------main code------------------------------------------------------------
@@ -34,6 +35,7 @@ assert LblCount == ImgCount
 
 #make list of neurons in each layer
 Architecture = np.array([ImgSize, 20, 20, 10])
+ActivationFunctions = [ Methods.ReLU, Methods.ReLU, Methods.softmax ]
 LayerCount = Architecture.size
 ConnectCount = LayerCount - 1
 
@@ -45,9 +47,9 @@ for l in range(ConnectCount):
 	Weights[l] = np.random.normal(0, 2/Architecture[0], (Architecture[l+1], Architecture[l]) )
 	Biases[l] = np.random.normal(0, 2/Architecture[0], (Architecture[l+1]) )
 
-#ImgCount=20
+
 #run though all batches
-for y in range(ImgCount//BatchSize):
+for y in range(TrainingLoops*ImgCount//BatchSize):
     
     #define deltas for batch
     WeightDelta1 = np.zeros(Weights[-1].shape)
@@ -61,36 +63,39 @@ for y in range(ImgCount//BatchSize):
     
     #run batch
     for x in range(BatchSize):
-        ImgID = y*BatchSize + x
+        ImgID = (y*BatchSize + x) % ImgCount
     
         #get the target number for the NN
-        Goal = np.zeros((10))
-        Goal[TrainLabels[ImgID]] = 1
+        # if you have the goals be 1s and 0s the network needs to hit inf and -inf to hit them bc softmax
+        Uncertanty = 0.02
+        Goal = (Uncertanty/9) * np.ones((10))
+        Goal[TrainLabels[ImgID]] = 1 - Uncertanty
+
+
         
         InputData = TrainSamples[ImgID]/255
     
         
         #run the Neural Network
-        ActivatedOutput, RawLayerOutput = Methods.RunNetwork(InputData, Weights, Biases, Architecture)
+        ActivatedOutput, RawLayerOutput = Methods.RunNetwork(InputData, Weights, Biases, Architecture, ActivationFunctions)
 
             
         #softmax final output
         outputData = ActivatedOutput[-1]
-        
+        CurrentCost = Methods.cost(outputData, Goal)
         
         #print cost
-        print(Methods.cost(outputData, Goal))
-        
+        print(CurrentCost)
+        if np.isnan(CurrentCost): break
         
         #calculate jacobian of softmax
-        softmaxGrad = -np.outer(outputData, outputData)
-        np.fill_diagonal(softmaxGrad, outputData*(1-outputData))
+        softmaxGrad = Methods.softmaxGradient(outputData)
         
         #calcualte gradiant of ReLU
-        ReLUGrad = np.asarray([ np.where(i < 0, 0.1, 1) for i in RawLayerOutput ], dtype=object )
+        ReLUGrad = np.array([ Methods.ReLUGradient(i) for i in RawLayerOutput ], dtype=object )
         
         #find delta of output of each layer
-        Del1 = 2*(outputData - Goal) * ReLUGrad[-1]
+        Del1 = outputData - Goal
         Del2 = ( Del1 @ Weights[-1] ) * ReLUGrad[-2] 
         Del3 = ( Del2 @ Weights[-2] ) * ReLUGrad[-3]
         
@@ -105,6 +110,7 @@ for y in range(ImgCount//BatchSize):
         BiasDelta2 += -1*learnRate*Del2
         BiasDelta3 += -1*learnRate*Del3
         
+    if np.isnan(CurrentCost): break
         
     #apply deltas
     Weights[-3] += WeightDelta3
@@ -143,3 +149,13 @@ if 'y' in save.lower() :
 # got the neural network to actually work however it was without softmax and without batches
 # I think I can make it better. The two big problems are either it colapsing to only choosing one output
 # or the cost exploding to infinity for an unknown reason. could be slingshotting.
+
+
+
+# 4/21/24
+# finally figured stuff out and got it to work better with the softmax function. 
+# #1 I changed my cost function to the cross entropy loss function which played much better with softmax
+# #2 I softened my goals to have uncertanty since otherwise you need inf to get 1 from softmax and values explode
+# #3 I fixed my softmax function which was somehow broken? idk how I didn't realize this before
+# #4 I set it so it wasn't activating the final layer with both leaky ReLU and softmax bc just softmax allows for better range
+# I think I'm going to try my hand at making a convolutional neural network now so we'll see how that goes

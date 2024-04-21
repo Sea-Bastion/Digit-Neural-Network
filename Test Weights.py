@@ -30,6 +30,7 @@ with open(WeightPath, 'r') as infile:
 Weights = np.array([np.array(x) for x in RawData['Weights']], dtype=object)
 Biases = np.array([np.array(x) for x in RawData['Biases']], dtype=object)
 Architecture = np.array(RawData['Architecture'])
+ActivationFunctions = [ Methods.ReLU, Methods.ReLU, Methods.softmax ]
 
 #---------------------------------------------------------Test Loop----------------------------------------
 
@@ -42,11 +43,13 @@ for ImgID in range(ImgCount):
     InputData = TestImages[ImgID]/255
     
     #get goal vector from label
-    Goal = np.zeros((10))
-    Goal[TestLabels[ImgID]] = 1
+    Uncertanty = 0.02
+    Goal = (Uncertanty/9) * np.ones((10))
+    Goal[TestLabels[ImgID]] = 1 - Uncertanty
+
     
     
-    ActivatedOut, RawOut = Methods.RunNetwork(InputData, Weights, Biases, Architecture)
+    ActivatedOut, RawOut = Methods.RunNetwork(InputData, Weights, Biases, Architecture, ActivationFunctions)
     
     OutputData = ActivatedOut[-1]
     

@@ -10,20 +10,54 @@ import numpy as np
 import json
 
 
-def ReLU(value):
-	return np.maximum(value, value*0.1)
+
+
+
+
+def ReLU(input):
+	return np.maximum(input, input*0.1)
 	
+
+
+def ReLUGradient(input):
+    return np.where(input > 0, 1, 0.1)
+
+
+
+
 #softmax function to limit output
 def softmax(input):
-	einput = np.exp(input - np.amax(input))
-	return np.divide(einput, einput.sum())
+	einput = np.exp(input)
+	return einput/ einput.sum()
+
+
+
+
+
+def softmaxGradient(SoftmaxOutput):
+    output = -np.outer(SoftmaxOutput, SoftmaxOutput)
+    np.fill_diagonal(output, SoftmaxOutput*(1-SoftmaxOutput))
+    return output
+
+
 
 #liner algibra for computing a single layer of NN
-def RunLayer(inputs, weights, biases):
-	return weights.dot(inputs) + biases
+def RunLayer(input, weights, biases):
+	return np.clip(weights.dot(input) + biases, -100, 100)
 
-def cost(inputs, correct):
-	return np.square(inputs - correct).sum()
+
+
+
+
+
+def cost(input, correct):
+	return -(correct * np.log(input)).sum()
+
+
+def costGradient(input, correct):
+    return 2*(input - correct)
+
+
 
 def SaveWeights(weights, biases, Arch, locations):
     exportData = {
@@ -36,7 +70,12 @@ def SaveWeights(weights, biases, Arch, locations):
     
     with open(locations, 'w') as outfile:
         outfile.write(JsonText)
-        
+     
+
+
+
+
+
 def LoadImages(ImgPath):
     with open(ImgPath, "rb") as images:
 
@@ -49,6 +88,11 @@ def LoadImages(ImgPath):
     #load images into numpy 3d matrix
     return (np.reshape(np.fromfile(ImgPath, dtype=np.uint8, offset=16), (ImgCount, ImgSize)), ImgCount, ImgRows, ImgColumns)
 
+
+
+
+
+
 def LoadLabels(LblPath):
     with open(LblPath, "rb") as labels:
 
@@ -59,7 +103,12 @@ def LoadLabels(LblPath):
     return (np.fromfile(LblPath, dtype=np.uint8, offset=8), LblCount)
 
 
-def RunNetwork(inputs, Weights, Biases, Architecture):
+
+
+
+
+
+def RunNetwork(inputs, Weights, Biases, Architecture, ActivationFuncs):
     
     #make space to store NN output
     #and init input layer with input
@@ -71,6 +120,6 @@ def RunNetwork(inputs, Weights, Biases, Architecture):
     #run all layers
     for l in range(Architecture.size - 1):
         RawLayerOutput[l+1] = RunLayer(ActivatedOutput[l], Weights[l], Biases[l])
-        ActivatedOutput[l+1] = ReLU( RawLayerOutput[l+1] )
+        ActivatedOutput[l+1] = ActivationFuncs[l]( RawLayerOutput[l+1] )
         
     return (ActivatedOutput, RawLayerOutput)
